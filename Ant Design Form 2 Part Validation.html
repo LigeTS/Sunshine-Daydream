@@ -348,13 +348,17 @@
       
       return (
         <div className="ant-card">
-          {/* Form header */}
-          <div className="ant-card-head">
-            <div className="ant-card-head-title">
-              {step === 1 ? 'Customer Information' : 
-               step === 2 ? 'Processing...' : 
-               'Complete Your Information'}
+          <div className="flex justify-between items-center mb-4">
+            <div className="ant-card-head">
+              <div className="ant-card-head-title">
+                {step === 1 ? 'Customer Information' : 
+                 step === 2 ? 'Processing...' : 
+                 'Complete Your Information'}
+              </div>
             </div>
+            <a href="index.html" className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center">
+              <span>← Back to Home</span>
+            </a>
           </div>
           
           {/* Loading state */}
