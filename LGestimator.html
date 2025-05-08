@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Countertop Estimator</title>
+  
+  <!-- Include React and ReactDOM -->
+  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+
+   <!-- Load React and ReactDOM -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  
+  <!-- Include Babel for JSX support -->
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+  <!-- Load Babel for JSX -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.21.2/babel.min.js"></script>
+  
+  <!-- Include Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    #root {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+    
+    const ResponsiveDrawingArea = () => {
+      const containerRef = useRef(null);
+      const canvasRef = useRef(null);
+      const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+      const [isDrawing, setIsDrawing] = useState(false);
+      const [currentShape, setCurrentShape] = useState({ 
+        type: 'rectangle', 
+        x: 0, 
+        y: 0, 
+        width: 0, 
+        height: 0, 
+        material: 'quartz',
+        cornerRadius: 0
+      });
+      const [shapes, setShapes] = useState([]);
+      const [scale, setScale] = useState(24); 
+      const [totalSquareFeet, setTotalSquareFeet] = useState(0);
+      const [selectedMaterial, setSelectedMaterial] = useState('quartz');
+      const [selectedCornerRadius, setSelectedCornerRadius] = useState(0);
+      const [selectedShapeIndex, setSelectedShapeIndex] = useState(-1);
+      
+      // Material definitions with colors and price ranges
+      const materials = {
+        quartz: { 
+          name: 'Quartz',
+          color: 'rgba(173, 216, 230, 0.4)',
+          minPrice: 55,
+          maxPrice: 75
+        },
+        solidSurface: { 
+          name: 'Solid Surface',
+          color: 'rgba(144, 238, 144, 0.4)',
+          minPrice: 35,
+          maxPrice: 60
+        },
+        naturalStone: { 
+          name: 'Natural Stone',
+          color: 'rgba(222, 184, 135, 0.4)',
+          minPrice: 60,
+          maxPrice: 100
+        },
+        quartzite: { 
+          name: 'Quartzite',
+          color: 'rgba(221, 160, 221, 0.4)',
+          minPrice: 70,
+          maxPrice: 120
+        }
+      };
+
+      // Corner radius options in inches
+      const cornerRadiusOptions = [
+        { value: 0, label: 'No Radius (Sharp)' },
+        { value: 0.75, label: '3/4″' },
+        { value: 6, label: '>3/4″ - 6″' },
+        { value: 18, label: '>6″ - 18″' },
+        { value: 30, label: '>18″ - 30″' },
+        { value: 42, label: '>30″ - 42″' },
+        { value: 60, label: '>42″' }
+      ];
+      
+      // Update container size on mount and window resize
+      useEffect(() => {
+        const updateSize = () => {
+          if (containerRef.current) {
+            const { offsetWidth, offsetHeight } = containerRef.current;
+            setContainerSize({ 
+              width: offsetWidth, 
+              height: offsetHeight 
+            });
+          }
+        };
+        
+        updateSize();
+        window.addEventListener('resize', updateSize);
+        return () => window.removeEventListener('resize', updateSize);
+      }, []);
+      
+      // Update canvas size when container size changes
+      useEffect(() => {
+        if (canvasRef.current && containerSize.width > 0 && containerSize.height > 0) {
+          const canvas = canvasRef.current;
+          canvas.width = containerSize.width;
+          canvas.height = containerSize.height;
+          redrawCanvas();
+        }
+      }, [containerSize]);
+      
+      // Calculate square footage when shapes change
+      useEffect(() => {
+        calculateTotalSquareFeet();
+        redrawCanvas();
+      }, [shapes, scale]);
+      
+      // Redraw when selection changes
+      useEffect(() => {
+        redrawCanvas();
+      }, [selectedShapeIndex]);
+      
+      const calculateTotalSquareFeet = () => {
+        let total = 0;
+        
+        shapes.forEach(shape => {
+          const widthFeet = Math.abs(shape.width) / scale;
+          const heightFeet = Math.abs(shape.height) / scale;
+          const areaSqFt = widthFeet * heightFeet;
+          
+          total += areaSqFt;
+        });
+        
+        setTotalSquareFeet(total);
+      };
+      
+      const redrawCanvas = () => {
+        if (!canvasRef.current) return;
+        
+        const ctx = canvasRef.current.getContext('2d');
+        ctx.clearRect(0, 0, containerSize.width, containerSize.height);
+        
+        // Draw grid
+        ctx.strokeStyle = '#ddd';
+        ctx.lineWidth = 1;
+        const gridSize = scale;
+        
+        for (let x = 0; x < containerSize.width; x += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, containerSize.height);
+          ctx.stroke();
+        }
+        
+        for (let y = 0; y < containerSize.height; y += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(containerSize.width, y);
+          ctx.stroke();
+        }
+        
+        // Draw saved shapes
+        shapes.forEach((shape, index) => {
+          drawShape(ctx, shape, index);
+        });
+        
+        // Draw current shape if drawing
+        if (isDrawing) {
+          drawShape(ctx, currentShape);
+        }
+      };
+      
+      const drawShape = (ctx, shape, index) => {
+        const isSelected = index === selectedShapeIndex;
+        ctx.strokeStyle = isSelected ? '#ff0000' : '#333';
+        ctx.lineWidth = isSelected ? 3 : 2;
+        
+        if (shape.type === 'rectangle') {
+          const materialColor = shape.material && materials[shape.material] 
+            ? materials[shape.material].color 
+            : 'rgba(135, 206, 250, 0.3)';
+          
+          const radiusInPixels = (shape.cornerRadius || 0) * (scale / 12);
+          
+          ctx.fillStyle = materialColor;
+          
+          if (radiusInPixels > 0) {
+            const x = shape.x;
+            const y = shape.y;
+            const width = shape.width;
+            const height = shape.height;
+            const r = radiusInPixels;
+            
+            const maxRadius = Math.min(Math.abs(width), Math.abs(height)) / 2;
+            const radius = Math.min(r, maxRadius);
+            
+            const rectX = width < 0 ? x + width : x;
+            const rectY = height < 0 ? y + height : y;
+            const rectW = Math.abs(width);
+            const rectH = Math.abs(height);
+            
+            ctx.beginPath();
+            ctx.moveTo(rectX + radius, rectY);
+            ctx.lineTo(rectX + rectW - radius, rectY);
+            ctx.arcTo(rectX + rectW, rectY, rectX + rectW, rectY + radius, radius);
+            ctx.lineTo(rectX + rectW, rectY + rectH - radius);
+            ctx.arcTo(rectX + rectW, rectY + rectH, rectX + rectW - radius, rectY + rectH, radius);
+            ctx.lineTo(rectX + radius, rectY + rectH);
+            ctx.arcTo(rectX, rectY + rectH, rectX, rectY + rectH - radius, radius);
+            ctx.lineTo(rectX, rectY + radius);
+            ctx.arcTo(rectX, rectY, rectX + radius, rectY, radius);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          } else {
+            ctx.beginPath();
+            ctx.rect(shape.x, shape.y, shape.width, shape.height);
+            ctx.fill();
+            ctx.stroke();
+          }
+          
+          // Calculate and display dimensions
+          const widthFeet = Math.abs(shape.width) / scale;
+          const heightFeet = Math.abs(shape.height) / scale;
+          const areaSqFt = widthFeet * heightFeet;
+          
+          const centerX = shape.x + shape.width / 2;
+          const centerY = shape.y + shape.height / 2;
+          
+          ctx.font = '12px Arial';
+          ctx.fillStyle = '#000';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          
+          const formattedArea = areaSqFt.toFixed(2);
+          const formattedWidth = widthFeet.toFixed(2);
+          const formattedHeight = heightFeet.toFixed(2);
+          
+          ctx.fillText(`${formattedWidth}' × ${formattedHeight}'`, centerX, centerY - 10);
+          ctx.fillText(`${formattedArea} sq ft`, centerX, centerY + 10);
+          
+          if (index !== undefined) {
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(shape.x - 10, shape.y - 20, 20, 20);
+            ctx.fillStyle = '#333';
+            ctx.fillText((index + 1).toString(), shape.x, shape.y - 10);
+          }
+        }
+      };
+      
+      const handleMouseDown = (e) => {
+        const rect = canvasRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        const clickedShapeIndex = findShapeAtPosition(x, y);
+        console.log("Mouse down at:", x, y, "Clicked shape index:", clickedShapeIndex);
+        
+        if (clickedShapeIndex >= 0) {
+          // Select the shape
+          setSelectedShapeIndex(clickedShapeIndex);
+          console.log("Selected shape at index:", clickedShapeIndex);
+          
+          // Update the UI to show this shape's properties
+          const shape = shapes[clickedShapeIndex];
+          if (shape.material) {
+            setSelectedMaterial(shape.material);
+            console.log("Setting selected material to:", shape.material);
+          }
+          if (shape.cornerRadius !== undefined) {
+            setSelectedCornerRadius(shape.cornerRadius);
+            console.log("Setting selected corner radius to:", shape.cornerRadius);
+          }
+        } else {
+          // Start drawing a new shape
+          setIsDrawing(true);
+          setSelectedShapeIndex(-1); // Deselect any selected shape
+          console.log("Starting to draw new shape at:", x, y);
+          setCurrentShape({
+            type: 'rectangle',
+            x,
+            y,
+            width: 0,
+            height: 0,
+            material: selectedMaterial,
+            cornerRadius: selectedCornerRadius
+          });
+        }
+      };
+      
+      const findShapeAtPosition = (x, y) => {
+        for (let i = shapes.length - 1; i >= 0; i--) {
+          const shape = shapes[i];
+          
+          if (shape.type === 'rectangle') {
+            const rectX = shape.width < 0 ? shape.x + shape.width : shape.x;
+            const rectY = shape.height < 0 ? shape.y + shape.height : shape.y;
+            const rectWidth = Math.abs(shape.width);
+            const rectHeight = Math.abs(shape.height);
+            
+            if (x >= rectX && x <= rectX + rectWidth && 
+                y >= rectY && y <= rectY + rectHeight) {
+              return i;
+            }
+          }
+        }
+        
+        return -1;
+      };
+      
+      const handleMouseMove = (e) => {
+        if (!isDrawing) return;
+        
+        const rect = canvasRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        setCurrentShape(prev => ({
+          ...prev,
+          width: x - prev.x,
+          height: y - prev.y
+        }));
+        
+        redrawCanvas();
+      };
+      
+      const handleMouseUp = () => {
+        if (!isDrawing) return;
+        
+        setShapes(prev => [...prev, currentShape]);
+        setIsDrawing(false);
+        redrawCanvas();
+      };
+      
+      const handleTouchStart = (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent('mousedown', {
+          clientX: touch.clientX,
+          clientY: touch.clientY
+        });
+        handleMouseDown(mouseEvent);
+      };
+      
+      const handleTouchMove = (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent('mousemove', {
+          clientX: touch.clientX,
+          clientY: touch.clientY
+        });
+        handleMouseMove(mouseEvent);
+      };
+      
+      const handleTouchEnd = (e) => {
+        e.preventDefault();
+        handleMouseUp();
+      };
+      
+      const applyMaterialToSelectedShape = () => {
+        if (selectedShapeIndex === -1) {
+          console.log("No shape selected for material application");
+          return;
+        }
+        
+        console.log(`Applying material ${selectedMaterial} to shape ${selectedShapeIndex}`);
+        
+        // Create a new array with the updated shape
+        const newShapes = [...shapes];
+        newShapes[selectedShapeIndex] = {
+          ...newShapes[selectedShapeIndex],
+          material: selectedMaterial
+        };
+        
+        // Update state with the new array
+        setShapes(newShapes);
+        console.log("Updated shapes array:", newShapes);
+      };
+      
+      const applyCornerRadiusToSelectedShape = () => {
+        if (selectedShapeIndex === -1) {
+          console.log("No shape selected for corner radius application");
+          return;
+        }
+        
+        console.log(`Applying corner radius ${selectedCornerRadius} to shape ${selectedShapeIndex}`);
+        
+        // Create a new array with the updated shape
+        const newShapes = [...shapes];
+        newShapes[selectedShapeIndex] = {
+          ...newShapes[selectedShapeIndex],
+          cornerRadius: selectedCornerRadius
+        };
+        
+        // Update state with the new array
+        setShapes(newShapes);
+        console.log("Updated shapes array:", newShapes);
+      };
+      
+      return (
+        <div className="flex flex-col h-screen">
+          <div className="bg-blue-100 p-4">
+            <h1 className="text-xl font-bold">Countertop Estimator</h1>
+            <p className="text-sm">Select material type, corner radius, and draw rectangles to create your countertop design</p>
+          </div>
+          
+          <div className="flex flex-1 overflow-hidden">
+            <div className="w-64 bg-gray-100 p-4 overflow-y-auto">
+              <h2 className="font-bold mb-3">Material Selection</h2>
+              <div className="mb-4 bg-white p-3 rounded border border-gray-300">
+                {Object.entries(materials).map(([key, material]) => (
+                  <div 
+                    key={key}
+                    className={`flex items-center p-2 mb-1 rounded cursor-pointer ${selectedMaterial === key ? 'bg-blue-100 border border-blue-400' : 'hover:bg-gray-100'}`}
+                    onClick={() => setSelectedMaterial(key)}
+                  >
+                    <div 
+                      className="w-6 h-6 mr-2 rounded border border-gray-400" 
+                      style={{ backgroundColor: material.color }}
+                    ></div>
+                    <div>
+                      <div className="font-medium">{material.name}</div>
+                      <div className="text-xs text-gray-600">${material.minPrice}-${material.maxPrice}/sq ft</div>
+                    </div>
+                  </div>
+                ))}
+                
+                <button 
+                  className={`mt-2 px-3 py-1 text-sm rounded ${selectedShapeIndex >= 0 ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-500'}`}
+                  disabled={selectedShapeIndex === -1}
+                  onClick={() => {
+                    applyMaterialToSelectedShape();
+                    redrawCanvas(); // Force redraw after applying change
+                  }}
+                >
+                  Apply Material to Selected
+                </button>
+              </div>
+              
+              <h2 className="font-bold mb-3">Corner Radius</h2>
+              <div className="mb-4 bg-white p-3 rounded border border-gray-300">
+                {cornerRadiusOptions.map((option) => (
+                  <div 
+                    key={option.value}
+                    className={`flex items-center p-2 mb-1 rounded cursor-pointer ${selectedCornerRadius === option.value ? 'bg-blue-100 border border-blue-400' : 'hover:bg-gray-100'}`}
+                    onClick={() => setSelectedCornerRadius(option.value)}
+                  >
+                    <div className="w-6 h-6 mr-2 rounded-lg border border-gray-400 flex items-center justify-center text-xs">
+                      {option.value > 0 ? 'R' : '□'}
+                    </div>
+                    <div>
+                      <div className="font-medium">{option.label}</div>
+                      {option.value > 0 && (
+                        <div className="text-xs text-gray-600">Radius: {option.value}" ({(option.value * scale / 12).toFixed(0)}px)</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                
+                <button 
+                  className={`mt-2 px-3 py-1 text-sm rounded ${selectedShapeIndex >= 0 ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-500'}`}
+                  disabled={selectedShapeIndex === -1}
+                  onClick={() => {
+                    applyCornerRadiusToSelectedShape();
+                    redrawCanvas(); // Force redraw after applying change
+                  }}
+                >
+                  Apply Radius to Selected
+                </button>
+              </div>
+              
+              <h2 className="font-bold mb-2 mt-2">Controls</h2>
+              <div className="flex mb-3 items-center text-sm">
+                <div className="mr-2">
+                  {selectedShapeIndex >= 0 ? (
+                    <span className="bg-blue-100 p-1 rounded">Shape #{selectedShapeIndex + 1} selected</span>
+                  ) : (
+                    <span>No shape selected</span>
+                  )}
+                </div>
+                {selectedShapeIndex >= 0 && (
+                  <button 
+                    className="ml-auto bg-red-500 text-white px-2 py-1 rounded text-xs"
+                    onClick={() => setSelectedShapeIndex(-1)}
+                  >
+                    Deselect
+                  </button>
+                )}
+              </div>
+              <p className="text-sm mb-2">Click on a shape to select it, or click and drag to draw a new shape</p>
+              <button 
+                className="bg-blue-500 text-white px-4 py-2 rounded w-full mb-2"
+                onClick={() => {
+                  setShapes([]);
+                  setSelectedShapeIndex(-1);
+                  setTotalSquareFeet(0);
+                  redrawCanvas();
+                }}
+              >
+                Clear All
+              </button>
+              
+              <div className="mt-4">
+                <h3 className="font-bold mb-2">Scale Settings</h3>
+                <p className="text-sm">Scale: {scale}px = 1ft</p>
+                <div className="mt-2">
+                  <label className="block text-sm font-medium mb-1">Scale (px per ft):</label>
+                  <input
+                    type="range"
+                    min="12"
+                    max="48"
+                    value={scale}
+                    onChange={(e) => setScale(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs">
+                    <span>12</span>
+                    <span>24</span>
+                    <span>36</span>
+                    <span>48</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-6 bg-white p-3 rounded border border-gray-300">
+                <h3 className="font-bold mb-2">Countertop Summary</h3>
+                <p className="text-sm">Number of pieces: {shapes.length}</p>
+                
+                {totalSquareFeet > 0 && (
+                  <>
+                    <p className="text-sm font-bold mt-2">Total Square Footage:</p>
+                    <p className="text-xl font-bold text-blue-600">{totalSquareFeet.toFixed(2)} sq ft</p>
+                    
+                    <div className="mt-3 pt-2 border-t border-gray-200">
+                      <p className="font-bold">Estimated Cost:</p>
+                      <p className="text-sm">
+                        @ $40/sq ft: ${(totalSquareFeet * 40).toFixed(2)}
+                      </p>
+                      <p className="text-sm">
+                        @ $65/sq ft: ${(totalSquareFeet * 65).toFixed(2)}
+                      </p>
+                      <p className="text-sm">
+                        @ $85/sq ft: ${(totalSquareFeet * 85).toFixed(2)}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+            
+            <div 
+              ref={containerRef} 
+              className="flex-1 relative bg-white border border-gray-300"
+            >
+              <canvas
+                ref={canvasRef}
+                className="absolute top-0 left-0 w-full h-full"
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              />
+              <div className="absolute bottom-2 right-2 bg-white bg-opacity-75 p-2 rounded shadow text-xs">
+                <p>Grid: {(1).toFixed(1)}ft × {(1).toFixed(1)}ft</p>
+              </div>
+              
+              <div className="absolute top-2 left-2 bg-white bg-opacity-90 p-2 rounded shadow">
+                <div className="flex items-center mb-1">
+                  <div className="font-medium text-sm mr-2">Material:</div>
+                  <div 
+                    className="w-4 h-4 mr-1 rounded" 
+                    style={{ backgroundColor: materials[selectedMaterial].color }}
+                  ></div>
+                  <div className="font-medium text-sm">{materials[selectedMaterial].name}</div>
+                </div>
+                <div className="flex items-center">
+                  <div className="font-medium text-sm mr-2">Corner Radius:</div>
+                  <div className="font-medium text-sm">
+                    {cornerRadiusOptions.find(option => option.value === selectedCornerRadius)?.label || 'No Radius'}
+                  </div>
+                </div>
+                {selectedShapeIndex >= 0 && (
+                  <div className="mt-1 pt-1 border-t border-gray-200">
+                    <div className="font-medium text-sm text-red-600">Editing Shape #{selectedShapeIndex + 1}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // Render the app
+    ReactDOM.render(
+      <ResponsiveDrawingArea />,
+      document.getElementById('root')
+    );
+  </script>
+</body>
+</html>
