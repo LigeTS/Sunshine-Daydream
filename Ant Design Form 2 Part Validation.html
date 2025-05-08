@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Form with Pre-filled Data Demo</title>
+  
+  <!-- Include React -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  
+  <!-- Include Babel for JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Tailwind CSS for styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    /* Additional custom styles */
+    .loading-spinner {
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Ant Design-like styling */
+    .ant-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.375rem;
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition-property: color, background-color, border-color;
+      transition-duration: 150ms;
+    }
+    
+    .ant-btn-primary {
+      background-color: #1677ff;
+      color: white;
+    }
+    
+    .ant-btn-primary:hover {
+      background-color: #0958d9;
+    }
+    
+    .ant-btn-default {
+      background-color: white;
+      color: #2c3e50;
+      border: 1px solid #d9d9d9;
+    }
+    
+    .ant-btn-default:hover {
+      background-color: #f5f5f5;
+    }
+    
+    .ant-input {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #d9d9d9;
+      border-radius: 0.375rem;
+    }
+    
+    .ant-input:focus {
+      outline: none;
+      border-color: #1677ff;
+      box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.2);
+    }
+    
+    .ant-input-prefix {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      display: flex;
+      align-items: center;
+      padding-left: 0.75rem;
+      pointer-events: none;
+      color: #999;
+    }
+    
+    .ant-select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #d9d9d9;
+      border-radius: 0.375rem;
+    }
+    
+    .ant-form-item {
+      margin-bottom: 1rem;
+    }
+    
+    .ant-form-item-label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #2c3e50;
+    }
+    
+    .ant-form-item-explain {
+      margin-top: 0.25rem;
+      font-size: 0.875rem;
+      color: #ff4d4f;
+    }
+    
+    .ant-alert {
+      padding: 0.75rem;
+      border-radius: 0.375rem;
+      margin-bottom: 1rem;
+    }
+    
+    .ant-alert-info {
+      background-color: #e6f4ff;
+      border: 1px solid #91caff;
+    }
+    
+    .ant-alert-message {
+      font-weight: 500;
+      color: #1677ff;
+      margin-bottom: 0.25rem;
+    }
+    
+    .ant-alert-description {
+      font-size: 0.875rem;
+      color: #4b5563;
+    }
+    
+    .ant-card {
+      background-color: white;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      border: 1px solid #e5e7eb;
+    }
+    
+    .ant-card-head {
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .ant-card-head-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+    
+    .prefilled-field {
+      background-color: #e6f4ff;
+      border-color: #91caff;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+  <div id="root" class="w-full max-w-lg"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    
+    // Simple icons to replace Lucide icons
+    const IconComponents = {
+      User: (props) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      ),
+      Home: (props) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+      ),
+      MapPin: (props) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+          <circle cx="12" cy="10" r="3"></circle>
+        </svg>
+      ),
+      Phone: (props) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+        </svg>
+      ),
+      Loader: (props) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="loading-spinner">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+        </svg>
+      )
+    };
+    
+    // Simplified US states for the demo
+    const US_STATES = [
+      { value: '', label: 'Select a state' },
+      { value: 'AL', label: 'Alabama' },
+      { value: 'CA', label: 'California' },
+      { value: 'FL', label: 'Florida' },
+      { value: 'NY', label: 'New York' },
+      { value: 'TX', label: 'Texas' }
+    ];
+    
+    const CustomerFormDemo = () => {
+      // Form state
+      const [formData, setFormData] = useState({
+        name: '',
+        address1: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        phone: ''
+      });
+      
+      // Validation state
+      const [showNameConfirmation, setShowNameConfirmation] = useState(false);
+      const [showAddressConfirmation, setShowAddressConfirmation] = useState(false);
+      const [nameConfirmed, setNameConfirmed] = useState(false);
+      const [addressConfirmed, setAddressConfirmed] = useState(false);
+      const [formValid, setFormValid] = useState(false);
+      
+      // UI state
+      const [loading, setLoading] = useState(false);
+      const [dataReturned, setDataReturned] = useState(false);
+      const [step, setStep] = useState(1); // 1: initial form, 2: loading, 3: returned data
+      
+      // Validation functions
+      const validateName = (name) => {
+        if (!name) return false;
+        const words = name.trim().split(/\s+/);
+        return words.length >= 2;
+      };
+      
+      const validateAddress = (address) => {
+        if (!address) return false;
+        const hasNumber = /\d/.test(address);
+        const hasStreet = /[a-zA-Z]/.test(address) && address.length > 5;
+        return hasNumber && hasStreet;
+      };
+      
+      // Format phone number to (XXX) XXX-XXXX
+      const formatPhoneNumber = (phone) => {
+        if (!phone) return '';
+        const cleaned = phone.replace(/\D/g, '');
+        const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
+        if (match) {
+          return `(${match[1]}) ${match[2]}-${match[3]}`;
+        }
+        return phone;
+      };
+      
+      // Handle form input changes
+      const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+        
+        // Special handling for name and address validation
+        if (name === 'name') {
+          const isValid = validateName(value);
+          setShowNameConfirmation(!isValid && value.trim() !== '');
+          if (isValid) setNameConfirmed(false);
+        }
+        
+        if (name === 'address1') {
+          const isValid = validateAddress(value);
+          setShowAddressConfirmation(!isValid && value.trim() !== '');
+          if (isValid) setAddressConfirmed(false);
+        }
+      };
+      
+      // Handle phone blur for formatting
+      const handlePhoneBlur = () => {
+        setFormData(prev => ({
+          ...prev,
+          phone: formatPhoneNumber(prev.phone)
+        }));
+      };
+      
+      // Submit form
+      const handleSubmit = () => {
+        if (!formValid) return;
+        
+        // Set loading state
+        setLoading(true);
+        setStep(2);
+        
+        // Simulate API call with timeout
+        setTimeout(() => {
+          // Simulate getting pre-filled data back
+          setFormData({
+            name: '',
+            address1: '123 Main Street',
+            city: 'Austin',
+            state: 'TX',
+            zipCode: '',
+            phone: ''
+          });
+          
+          // Update validation state for pre-filled address
+          const isAddressValid = validateAddress('123 Main Street');
+          setShowAddressConfirmation(!isAddressValid);
+          
+          // Update UI state
+          setDataReturned(true);
+          setLoading(false);
+          setStep(3);
+        }, 1500);
+      };
+      
+      // Check if form is valid
+      useEffect(() => {
+        const nameValid = validateName(formData.name) || (showNameConfirmation && nameConfirmed);
+        const addressValid = validateAddress(formData.address1) || (showAddressConfirmation && addressConfirmed);
+        const phoneValid = formData.phone && formData.phone.replace(/\D/g, '').length === 10;
+        const zipValid = formData.zipCode && formData.zipCode.trim().length >= 5;
+        
+        const allFieldsFilled = 
+          formData.name.trim() !== '' && 
+          formData.address1.trim() !== '' && 
+          formData.city.trim() !== '' &&
+          formData.state !== '' &&
+          formData.zipCode.trim() !== '' &&
+          formData.phone.trim() !== '';
+        
+        setFormValid(nameValid && addressValid && phoneValid && zipValid && allFieldsFilled);
+      }, [formData, showNameConfirmation, nameConfirmed, showAddressConfirmation, addressConfirmed]);
+      
+      // Reset form to initial state
+      const resetForm = () => {
+        setFormData({
+          name: '',
+          address1: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          phone: ''
+        });
+        setShowNameConfirmation(false);
+        setShowAddressConfirmation(false);
+        setNameConfirmed(false);
+        setAddressConfirmed(false);
+        setDataReturned(false);
+        setStep(1);
+      };
+      
+      return (
+        <div className="ant-card">
+          {/* Form header */}
+          <div className="ant-card-head">
+            <div className="ant-card-head-title">
+              {step === 1 ? 'Customer Information' : 
+               step === 2 ? 'Processing...' : 
+               'Complete Your Information'}
+            </div>
+          </div>
+          
+          {/* Loading state */}
+          {step === 2 && (
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="text-blue-500 mb-4">
+                <IconComponents.Loader size={40} />
+              </div>
+              <p className="text-gray-600">Submitting your information...</p>
+            </div>
+          )}
+          
+          {/* Initial form or form with returned data */}
+          {(step === 1 || step === 3) && (
+            <div className="space-y-4">
+              {/* Pre-filled data notification */}
+              {dataReturned && (
+                <div className="ant-alert ant-alert-info">
+                  <div className="ant-alert-message">Address Information Retrieved</div>
+                  <div className="ant-alert-description">
+                    Your address, city, and state have been pre-filled. Please complete the remaining fields.
+                  </div>
+                </div>
+              )}
+              
+              {/* Name field */}
+              <div className="ant-form-item">
+                <label className="ant-form-item-label">
+                  Full Name *
+                </label>
+                <div className="relative">
+                  <div className="ant-input-prefix">
+                    <IconComponents.User size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="John Smith"
+                    className="ant-input pl-10"
+                  />
+                </div>
+                {showNameConfirmation && (
+                  <div className="mt-1">
+                    <p className="text-sm text-orange-500">Name should contain first and last name</p>
+                    <div className="mt-2">
+                      <label className="inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={nameConfirmed}
+                          onChange={e => setNameConfirmed(e.target.checked)}
+                          className="h-4 w-4 text-blue-600 rounded"
+                        />
+                        <span className="ml-2 text-sm text-orange-600">I confirm this name is correct</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Address field */}
+              <div className="ant-form-item">
+                <label className="ant-form-item-label">
+                  Address Line 1 *
+                </label>
+                <div className="relative">
+                  <div className="ant-input-prefix">
+                    <IconComponents.Home size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    name="address1"
+                    value={formData.address1}
+                    onChange={handleInputChange}
+                    placeholder="123 Main Street"
+                    className={`ant-input pl-10 ${dataReturned ? 'prefilled-field' : ''}`}
+                  />
+                </div>
+                {showAddressConfirmation && (
+                  <div className="mt-1">
+                    <p className="text-sm text-orange-500">Address should contain a number and street name</p>
+                    <div className="mt-2">
+                      <label className="inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={addressConfirmed}
+                          onChange={e => setAddressConfirmed(e.target.checked)}
+                          className="h-4 w-4 text-blue-600 rounded"
+                        />
+                        <span className="ml-2 text-sm text-orange-600">I confirm this address is correct</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* City field */}
+              <div className="ant-form-item">
+                <label className="ant-form-item-label">
+                  City *
+                </label>
+                <div className="relative">
+                  <div className="ant-input-prefix">
+                    <IconComponents.MapPin size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleInputChange}
+                    placeholder="City"
+                    className={`ant-input pl-10 ${dataReturned ? 'prefilled-field' : ''}`}
+                  />
+                </div>
+              </div>
+              
+              {/* State and ZIP Code row */}
+              <div className="flex space-x-4">
+                {/* State dropdown */}
+                <div className="w-1/2 ant-form-item">
+                  <label className="ant-form-item-label">
+                    State *
+                  </label>
+                  <select
+                    name="state"
+                    value={formData.state}
+                    onChange={handleInputChange}
+                    className={`ant-select ${dataReturned ? 'prefilled-field' : ''}`}
+                  >
+                    {US_STATES.map(state => (
+                      <option key={state.value} value={state.value}>
+                        {state.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* ZIP Code field */}
+                <div className="w-1/2 ant-form-item">
+                  <label className="ant-form-item-label">
+                    ZIP Code *
+                  </label>
+                  <input
+                    type="text"
+                    name="zipCode"
+                    value={formData.zipCode}
+                    onChange={handleInputChange}
+                    placeholder="12345"
+                    className="ant-input"
+                  />
+                </div>
+              </div>
+              
+              {/* Phone field */}
+              <div className="ant-form-item">
+                <label className="ant-form-item-label">
+                  Phone Number *
+                </label>
+                <div className="relative">
+                  <div className="ant-input-prefix">
+                    <IconComponents.Phone size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    onBlur={handlePhoneBlur}
+                    placeholder="(555) 555-5555"
+                    className="ant-input pl-10"
+                  />
+                </div>
+              </div>
+              
+              {/* Submit button */}
+              <div className="mt-6">
+                <button
+                  onClick={handleSubmit}
+                  disabled={!formValid}
+                  className={`w-full ant-btn ${formValid ? 'ant-btn-primary' : 'ant-btn-default opacity-50 cursor-not-allowed'}`}
+                >
+                  {dataReturned ? 'Complete Submission' : 'Submit Information'}
+                </button>
+              </div>
+              
+              {/* Reset form button (visible after data is returned) */}
+              {dataReturned && (
+                <div className="mt-2">
+                  <button
+                    onClick={resetForm}
+                    className="w-full ant-btn ant-btn-default"
+                  >
+                    Reset Form
+                  </button>
+                </div>
+              )}
+              
+              {/* Debug information for developers */}
+              <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded text-xs">
+                <div className="font-semibold mb-1">Debug Information:</div>
+                <div>Name valid: {(validateName(formData.name) || (showNameConfirmation && nameConfirmed)) ? 'Yes' : 'No'}</div>
+                <div>Address valid: {(validateAddress(formData.address1) || (showAddressConfirmation && addressConfirmed)) ? 'Yes' : 'No'}</div>
+                <div>Name confirmation needed: {showNameConfirmation ? 'Yes' : 'No'}</div>
+                <div>Address confirmation needed: {showAddressConfirmation ? 'Yes' : 'No'}</div>
+                <div>Form can be submitted: {formValid ? 'Yes' : 'No'}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+    
+    // Render the app
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<CustomerFormDemo />);
+  </script>
+</body>
+</html>
